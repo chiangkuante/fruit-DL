@@ -31,13 +31,6 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Data
-dataset/
-disease/
-*.jpg
-*.jpeg
-*.png
-*.JPG
 
 # Output
 output/
