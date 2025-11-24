@@ -48,3 +48,9 @@ checkpoints/
 
 # New model outputs
 output_v2/
+
+# plan
+plan.md
+
+# AI
+CLAUDE.md

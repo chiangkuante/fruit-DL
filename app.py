@@ -27,19 +27,19 @@ st.markdown("""
         }
 
 
-        /* ⭐ 左側 sidebar 背景顏色 */
+        /* 左側 sidebar 背景顏色 */
         [data-testid="stSidebar"] {
-            background-color: #52663f;   /* 這裡改成你想要的顏色 */
+            background-color: #52663f;
         }
 
         /* 側邊欄 expander 標題底色（模型狀態 / 檢視所有類別）*/
         [data-testid="stSidebar"] [data-testid="stExpander"] > details > summary {
-            background-color: #3b4f32;   /* 這裡換你喜歡的色 */
+            background-color: #3b4f32;
             color: #ffffff !important;   /* 標題文字顏色 */
             border-radius: 6px;
         }
 
-        /* 如果不想要 expander 外框的線，就留著；想保留原本外框就刪掉這段 */
+        /*去除 expander 外框的線 */
         [data-testid="stSidebar"] [data-testid="stExpander"] {
             border: none;
         }
@@ -75,7 +75,7 @@ st.markdown("""
 
         /* Slider 上方/下方顯示的數字與文字顏色 */
         [data-testid="stSidebar"] [data-baseweb="slider"] * {
-            color: #FFFFFF !important;  /* 換成你要的顏色 */
+            color: #FFFFFF !important;
         }
 
         /* 修改 expander 標題（上方 summary）背景色 */
@@ -86,28 +86,55 @@ st.markdown("""
         }
         /* 調整 st.metric 裡 delta 文字顏色 */
         [data-testid="stMetricDelta"] > div {
-            color: #3b4f32 !important;   /* 這裡換成你想要的顏色 */
+            color: #3b4f32 !important;
             font-weight:550;
         }
-         /* 改變上升箭頭顏色（避免留著預設亮綠） */
+         /* 改變上升箭頭顏色 */
         [data-testid="stMetricDelta"] svg {
             fill: #3b4f32 !important;
             color: #3b4f32 !important;
+        }
+
+        /* 修正錯誤訊息和資訊框的文字溢出問題 */
+        .stAlert {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        /* 修正檔案上傳器的文字溢出問題 */
+        [data-testid="stFileUploader"] small,
+        [data-testid="stFileUploader"] p,
+        [data-testid="stFileUploader"] div {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
         }
 
     </style>
 """, unsafe_allow_html=True)
 
 
-
+# ========== 疾病名稱中文映射 ==========
+DISEASE_NAME_ZH = {
+    "healthy": "健康",
+    "canker": "潰瘍病",
+    "greasy_spot": "油斑病",
+    "melanose": "黑點病",
+    "sooty_mold": "煤煙病",
+    "pest_aphid": "蟲害－蚜蟲",
+    "pest_leaf_miner": "蟲害－潛葉蛾",
+    "pest_scale_insect": "蟲害－介殼蟲",
+    "pest_thrips": "蟲害－薊馬",
+}
 
 # ========== 載入模型 (快取) ==========
 @st.cache_resource
 def load_predictor():
     """載入預測器 (只執行一次)"""
     return PlantDiseasePredictor(
-        model_path='output_v2/best_model.pth',
-        classes_path='output_v2/classes.json',
+        model_path='output/best_model.pth',
+        classes_path='output/classes.json',
         verbose=False
     )
 
@@ -116,7 +143,7 @@ try:
     model_info = predictor.get_model_info()
 except Exception as e:
     st.error(f"無法載入模型: {e}")
-    st.info("請確保 output/best_model.pth 和 output/classes.json 存在")
+    st.info("請確保模型存在 (output/best_model.pth 、 output/classes.json) ")
     st.stop()
 
 # ========== 側邊欄 ==========
@@ -132,7 +159,8 @@ with st.sidebar:
 
     with st.expander("檢視所有類別"):
         for i, cls in enumerate(model_info['class_names'], 1):
-            st.write(f"{i}. {cls}")
+            cls_zh = DISEASE_NAME_ZH.get(cls, cls)
+            st.write(f"{i}. {cls_zh}")
 
     st.markdown("---")
 
@@ -153,18 +181,18 @@ with st.sidebar:
         help="低於此閾值會顯示警告"
     )
 
-     # 🎨 在側邊欄最下方放插圖
+     # 在側邊欄最下方放插圖
     st.markdown("---")
-    st.image("spy.PNG", use_container_width=True)
+    st.image("spy.PNG")
 
 
 
 # ========== 檔案上傳 ==========
-# 上傳元件本身 label 留空，就不會再顯示預設字
 uploaded_file = st.file_uploader(
-    "",
+    "上傳植物葉片照片",
     type=['jpg', 'jpeg', 'png'],
-    help="請上傳清晰的植物葉片照片以獲得最佳診斷結果"
+    help="請上傳清晰的植物葉片照片以獲得最佳診斷結果",
+    label_visibility="hidden"
 )
 
 if uploaded_file is not None:
@@ -176,7 +204,7 @@ if uploaded_file is not None:
 
     with col1:
         st.subheader("上傳的圖片")
-        st.image(image, use_container_width=True, caption=uploaded_file.name)
+        st.image(image, caption=uploaded_file.name)
 
         # 圖片資訊
         with st.expander("檢視圖片資訊"):
@@ -194,13 +222,14 @@ if uploaded_file is not None:
 
         # 最佳預測結果
         best_class, best_prob = predictions[0]
+        best_class_zh = DISEASE_NAME_ZH.get(best_class, best_class)
 
         # 根據信心度顯示不同訊息
         if best_prob >= confidence_threshold:
-            result_bg = "#52663f"   
+            result_bg = "#52663f"
             result_title = "診斷結果"
         else:
-            result_bg = "#52663f"   
+            result_bg = "#52663f"
             result_title = "可能診斷（信心度較低）"
 
         st.markdown(
@@ -214,7 +243,7 @@ if uploaded_file is not None:
             font-size:1.05rem;
             margin-bottom:0.8rem;
         ">
-            {result_title}：{best_class}
+            {result_title}：{best_class_zh}
         </div>
         """,
         unsafe_allow_html=True,
@@ -281,8 +310,9 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("詳細分析")
 
-    # 建立 DataFrame
-    df = pd.DataFrame(predictions, columns=['類別', '信心度 (%)'])
+    # 建立 DataFrame，將英文類別名稱轉換為中文
+    predictions_zh = [(DISEASE_NAME_ZH.get(cls, cls), prob) for cls, prob in predictions]
+    df = pd.DataFrame(predictions_zh, columns=['類別', '信心度 (%)'])
     df['排名'] = range(1, len(df) + 1)
     df = df[['排名', '類別', '信心度 (%)']]
 
@@ -311,7 +341,7 @@ if uploaded_file is not None:
 
     st.dataframe(
         styled_df,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
@@ -355,7 +385,7 @@ if uploaded_file is not None:
         .interactive()             # ← 啟用拖曳、縮放
     )
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width='stretch')
 
 else:
 
@@ -399,14 +429,10 @@ else:
         """)
 
 # ========== 頁尾 ==========
-acc_text = ""
-if model_info.get("accuracy") is not None:
-    acc_text = f" | 準確率: {model_info['accuracy']:.2f}%"
-
 st.markdown(f"""
 <div style='text-align: center; color: #000000; padding: 1rem;'>
-    <p>植物病蟲害智能辨識系統 v1.0</p>
-    <p>使用 ConvNeXt Large 深度學習模型{acc_text}</p>
-    <p><small>© 2025 - 僅供教學與研究使用</small></p>
+    <p>植物病蟲害智慧辨識系統 v1.0</p>
+    <p>使用 ConvNeXt Large 深度學習模型</p>
+    <p>NPUST DN-LAB 2025</p>
 </div>
 """, unsafe_allow_html=True)
