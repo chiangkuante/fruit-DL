@@ -31,6 +31,10 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Data
+dataset/
+disease/
+
 
 # Output
 output/
@@ -54,3 +58,4 @@ plan.md
 
 # AI
 CLAUDE.md
+.claude
