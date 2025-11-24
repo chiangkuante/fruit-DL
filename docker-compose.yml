@@ -1,0 +1,32 @@
+services:
+  fruit-dl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fruit-dl-app
+    restart: always  # 容器自動重啟
+    ports:
+      - "8501:8501"
+    volumes:
+      # 掛載模型和資料集（避免每次重建映像）
+      - ./output:/app/output
+      - ./dataset:/app/dataset
+      # 如果需要保留上傳的圖片
+      - ./uploads:/app/uploads
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - fruit-dl-network
+
+networks:
+  fruit-dl-network:
+    driver: bridge
