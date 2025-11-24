@@ -20,19 +20,21 @@ RUN apt-get update && apt-get install -y \
 RUN ln -sf /usr/bin/python3.11 /usr/bin/python && \
     ln -sf /usr/bin/python3.11 /usr/bin/python3
 
-# 安裝 uv
+# 安裝 uv 並設置 PATH
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # 設定工作目錄
 WORKDIR /app
 
-# 複製專案檔案
-COPY pyproject.toml uv.lock* ./
-COPY . .
+# 複製專案定義檔案（利用 Docker 快取）
+COPY pyproject.toml README.md ./
 
-# 使用 uv 安裝依賴
-RUN uv sync --no-dev
+# 使用 uv 安裝依賴（不安裝專案本身）
+RUN uv sync --no-dev --no-install-project
+
+# 複製其他專案檔案
+COPY . .
 
 # 暴露 Streamlit 端口
 EXPOSE 8501

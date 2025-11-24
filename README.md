@@ -36,19 +36,30 @@ https://github.com/chiangkuante/fruit-DL/releases/download/v1.0/dataset.zip
 - Python 3.10+
 - NVIDIA GPU (CUDA 11.8) 或 CPU
 
-### 方法 1：使用 uv（推薦）
+需先安裝 `NVIDIA Container Toolkit`
+
+### 方法 1：使用 docker（推薦）
 
 ```bash
-# 安裝 uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+cd ~/fruit-DL
 
-# 同步所有依賴
-uv sync
-
-# 啟動虛擬環境（可選）
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# 建置 Docker 映像
+docker compose build
 ```
 
+```bash
+# 背景啟動
+docker compose up -d
+
+# 前景啟動（查看即時日誌）
+docker compose up
+```
+瀏覽器開啟 http://localhost:8501
+
+```bash
+# 停止並移除容器
+docker compose down
+```
 ### 方法 2：使用 pip
 
 ```bash

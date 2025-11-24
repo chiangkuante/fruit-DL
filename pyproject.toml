@@ -1,7 +1,44 @@
 [project]
 name = "fruit-dl"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "植物病蟲害智慧辨識系統 - 基於 ConvNeXt Large 深度學習模型"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []
+requires-python = ">=3.10"
+authors = [
+    { name = "NPUST DN-LAB", email = "noreply@example.com" }
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "timm>=0.9.0",
+    "streamlit>=1.28.0",
+    "pandas>=2.0.0",
+    "pillow>=10.0.0",
+    "altair>=5.0.0",
+    "scikit-learn>=1.3.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
+dev-dependencies = []
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
