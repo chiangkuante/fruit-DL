@@ -33,7 +33,6 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = false
-dev-dependencies = []
 
 [tool.black]
 line-length = 100
@@ -42,3 +41,10 @@ target-version = ['py310', 'py311']
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[dependency-groups]
+dev = [
+    "black>=25.11.0",
+    "flake8>=7.3.0",
+    "pytest>=9.0.1",
+]
