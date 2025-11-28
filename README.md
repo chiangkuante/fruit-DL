@@ -18,16 +18,6 @@
 | `pest_scale_insect` | 介殼蟲 | 蟲害 |
 | `pest_thrips` | 薊馬 | 蟲害 |
 
-## 下載資料集
-
-### 資料集分為原始資料集 `disease` 與已經切割train/val完成可直接測試的分割資料集 `dataset` 
-
-原始資料集:
-https://github.com/chiangkuante/fruit-DL/releases/download/v1.0/disease.zip
-
-分割資料集:
-https://github.com/chiangkuante/fruit-DL/releases/download/v1.0/dataset.zip
-
 
 ## 安裝
 
