@@ -9,10 +9,12 @@ from PIL import Image
 import pandas as pd
 from predict import PlantDiseasePredictor
 import altair as alt
+import html
 
 
 
-# ====== 自訂背景顏色 + 自製頂部頁首 ======
+# ====== 全站外觀設定 ======
+# Streamlit 預設元件樣式較固定，這裡用 CSS 統一調整背景、側邊欄、滑桿與 expander 顏色。
 st.markdown("""
     <style>
         /* 整個背景 */
@@ -32,16 +34,34 @@ st.markdown("""
             background-color: #52663f;
         }
 
-        /* 側邊欄 expander 標題底色（模型狀態 / 檢視所有類別）*/
-        [data-testid="stSidebar"] [data-testid="stExpander"] > details > summary {
-            background-color: #3b4f32;
-            color: #ffffff !important;   /* 標題文字顏色 */
-            border-radius: 6px;
+        /* Sidebar 全部文字改成白色 */
+        [data-testid="stSidebar"] * {
+            color: #ffffff !important;
         }
 
-        /*去除 expander 外框的線 */
+        /* Sidebar 標題：系統資訊、預測設定 */
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] h4,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] div {
+            color: #ffffff !important;
+        }
+
+        /* Expander 內文字：類別數量、計算裝置、模型準確率、所有類別 */
+        [data-testid="stSidebar"] [data-testid="stExpander"] * {
+            color: #ffffff !important;
+        }
+
+        /* 設定 expander 整體外圍大矩形 */
         [data-testid="stSidebar"] [data-testid="stExpander"] {
-            border: none;
+            border: 1px solid #768f5f !important;
+            border-radius: 10px !important;
+            background-color: #52663f !important;
+            overflow: hidden !important;
         }
 
         /* 外層頂部 bar：佔滿整個寬度 */
@@ -57,20 +77,17 @@ st.markdown("""
             z-index: 999;
         }
 
-        /* 滑桿底線的顏色 */
-        [data-testid="stSidebar"] [data-baseweb="slider"] > div > div {
-            background-color: #000000;   
-        }
-
-        /* 已填滿的那一段線（左側有值的部分） */
+        /* Slider 已填滿的 active track 顏色 */
+        [data-testid="stSidebar"] [data-baseweb="slider"] [data-testid="stTickBar"] > div,
+        [data-testid="stSidebar"] [data-baseweb="slider"] [class*="Track"] > div,
         [data-testid="stSidebar"] [data-baseweb="slider"] > div > div > div {
-            background-color: #3b4f32;   
+            background-color: #3b4f32 !important;
         }
 
         /* 滑桿圓形手把的顏色 */
         [data-testid="stSidebar"] [data-baseweb="slider"] [role="slider"] {
-            background-color: #3b4f32;   
-            border-color: #3b4f32;       
+            background-color: #768f5f !important;
+            border-color: #768f5f !important;
         }
 
         /* Slider 上方/下方顯示的數字與文字顏色 */
@@ -78,13 +95,60 @@ st.markdown("""
             color: #FFFFFF !important;
         }
 
-        /* 修改 expander 標題（上方 summary）背景色 */
+        
+
+        /* 修改 expander 標題（上方 summary）字體與背景 */
         details > summary {
-            background-color: #52663f !important;    /* <<< expander 標題底色 */
+            background-color: transparent !important; /* 背景透明，與外框矩形融為一體 */
             color: white !important;
-            border-radius: 10px !important;
+            font-weight: bold !important;            /* 標題字體加粗 */
         }
-        /* 調整 st.metric 裡 delta 文字顏色 */
+        
+        /* 調整 expander 展開時，標題與內容之間的分隔線顏色 */
+        [data-testid="stExpander"] details[open] > summary {
+            border-bottom: 1px solid #768f5f !important;
+        }
+        
+        /* 移除內容區域的多餘邊框，保持整體矩形的乾淨 */
+        [data-testid="stExpander"] details > div {
+            border: none !important;
+        }
+
+        /* 圖片資訊 expander：與建議措施色塊一致 */
+        .image-info-expander {
+            background-color: #52663f;
+            color: #ffffff;
+            border-radius: 10px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .image-info-expander summary {
+            background-color: #52663f !important;
+            color: #ffffff !important;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.65rem 1rem;
+        }
+
+        .image-info-expander[open] summary {
+            border-bottom: 1px solid #768f5f;
+        }
+
+        .image-info-expander div {
+            background-color: #52663f;
+            color: #ffffff;
+            padding: 0.8rem 1rem;
+            line-height: 1.8;
+        }
+        /* 調整 st.metric 裡 delta 背景與文字顏色 */
+        [data-testid="stMetricDelta"] {
+            background-color: #d8ffd3 !important;
+            border-radius: 999px;
+            padding: 0.15rem 0.4rem;
+            width: fit-content;
+        }
+
         [data-testid="stMetricDelta"] > div {
             color: #3b4f32 !important;
             font-weight:550;
@@ -116,6 +180,7 @@ st.markdown("""
 
 
 # ========== 疾病名稱中文映射 ==========
+# 模型輸出的是英文類別名稱，畫面顯示時透過這個字典轉成中文。
 DISEASE_NAME_ZH = {
     "healthy": "健康",
     "canker": "潰瘍病",
@@ -131,7 +196,10 @@ DISEASE_NAME_ZH = {
 # ========== 載入模型 (快取) ==========
 @st.cache_resource
 def load_predictor():
-    """載入預測器 (只執行一次)"""
+    """載入預測器。
+
+    st.cache_resource 會快取模型物件，避免每次互動都重新載入模型檔。
+    """
     return PlantDiseasePredictor(
         model_path='output/best_model.pth',
         classes_path='output/classes.json',
@@ -139,9 +207,11 @@ def load_predictor():
     )
 
 try:
+    # 啟動 App 時先載入模型，並取得類別數量、裝置與準確率等資訊。
     predictor = load_predictor()
     model_info = predictor.get_model_info()
 except Exception as e:
+    # 若模型檔或類別檔不存在，停止後續流程，避免預測階段才報錯。
     st.error(f"無法載入模型: {e}")
     st.info("請確保模型存在 (output/best_model.pth 、 output/classes.json) ")
     st.stop()
@@ -150,13 +220,14 @@ except Exception as e:
 with st.sidebar:
     st.header("系統資訊")
 
-    # 模型狀態（改成下拉選單）
+    # 模型狀態集中放在 expander，讓側邊欄保持簡潔。
     with st.expander("模型狀態", expanded=False):  # expanded=True 代表預設展開
-        st.write(f"**類別數量**: {model_info['num_classes']}")
-        st.write(f"**計算裝置**: {model_info['device']}")
+        st.write(f"類別數量: {model_info['num_classes']}")
+        st.write(f"計算裝置: {model_info['device']}")
         if model_info['accuracy']:
-            st.write(f"**模型準確率**: {model_info['accuracy']:.2f}%")
+            st.write(f"模型準確率: {model_info['accuracy']:.2f}%")
 
+    # 顯示模型支援的所有類別，並同步轉成中文名稱。
     with st.expander("檢視所有類別"):
         for i, cls in enumerate(model_info['class_names'], 1):
             cls_zh = DISEASE_NAME_ZH.get(cls, cls)
@@ -164,7 +235,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 預測參數
+    # 預測參數：top_k 控制顯示幾個候選結果，threshold 用來提示信心度是否偏低。
     st.subheader("預測設定")
     top_k = st.slider(
         "顯示前 K 個結果",
@@ -181,13 +252,14 @@ with st.sidebar:
         help="低於此閾值會顯示警告"
     )
 
-     # 在側邊欄最下方放插圖
+    # 在側邊欄最下方放插圖，增加畫面識別度。
     st.markdown("---")
-    st.image("spy.PNG")
+    st.image("spy.PNG", use_container_width=True)
 
 
 
 # ========== 檔案上傳 ==========
+# 使用者上傳圖片後，Streamlit 會重新執行整支程式，uploaded_file 會保存目前上傳的檔案。
 uploaded_file = st.file_uploader(
     "上傳植物葉片照片",
     type=['jpg', 'jpeg', 'png'],
@@ -196,35 +268,47 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # 讀取圖片
+    # 將上傳檔案轉成 PIL Image，供模型預測與畫面顯示使用。
     image = Image.open(uploaded_file)
 
-    # 建立兩欄布局
+    # 建立兩欄布局：左側放原始圖片，右側放診斷結果。
     col1, col2 = st.columns([1, 1])
 
     with col1:
         st.subheader("上傳的圖片")
         st.image(image, caption=uploaded_file.name)
 
-        # 圖片資訊
-        with st.expander("檢視圖片資訊"):
-            st.write(f"**檔案名稱**: {uploaded_file.name}")
-            st.write(f"**圖片尺寸**: {image.size[0]} x {image.size[1]} px")
-            st.write(f"**圖片格式**: {image.format}")
-            st.write(f"**色彩模式**: {image.mode}")
+        # 圖片資訊放在 expander，避免主要畫面被細節佔滿。
+        file_name = html.escape(uploaded_file.name)
+        image_format = html.escape(str(image.format))
+        image_mode = html.escape(str(image.mode))
+        st.markdown(
+            f"""
+            <details class="image-info-expander">
+                <summary>檢視圖片資訊</summary>
+                <div>
+                    檔案名稱: {file_name}<br>
+                    圖片尺寸: {image.size[0]} x {image.size[1]} px<br>
+                    圖片格式: {image_format}<br>
+                    色彩模式: {image_mode}
+                </div>
+            </details>
+            """,
+            unsafe_allow_html=True,
+        )
 
     with col2:
         st.subheader("診斷結果")
 
-        # 進行預測
+        # 呼叫預測器取得前 top_k 個分類結果，格式為 [(類別名稱, 信心度), ...]。
         with st.spinner('AI 正在分析圖片...'):
             predictions = predictor.predict(image, top_k=top_k)
 
-        # 最佳預測結果
+        # 第一筆是信心度最高的預測，作為主要診斷結果。
         best_class, best_prob = predictions[0]
         best_class_zh = DISEASE_NAME_ZH.get(best_class, best_class)
 
-        # 根據信心度顯示不同訊息
+        # 若最高信心度低於使用者設定的閾值，標題會提醒結果較不確定。
         if best_prob >= confidence_threshold:
             result_bg = "#52663f"
             result_title = "診斷結果"
@@ -250,14 +334,14 @@ if uploaded_file is not None:
     )
 
 
-        # 顯示信心度
+        # st.metric 顯示目前信心度，delta 用來比較和閾值的差距。
         st.metric(
             label="診斷信心度",
             value=f"{best_prob:.2f}%",
             delta=f"{best_prob - confidence_threshold:.2f}% vs 閾值"
         )
 
-        # 建議措施
+        # 建議措施會依照最佳預測類別切換內容。
         st.markdown("---")
         st.markdown("### 建議措施")
 
@@ -273,7 +357,7 @@ if uploaded_file is not None:
             "pest_thrips": "檢測到薊馬危害，建議：\n- 加強花期與嫩葉期監測\n- 適時使用選擇性殺蟲劑\n- 搭配黃色/藍色黏蟲板監控族群變化",
         }
 
-         # 針對不同疾病給不同底色
+        # 預留不同類別使用不同顏色的彈性；目前先統一成綠色系。
         disease_colors = {
             "healthy": ("#52663f", "#ffffff"),   # (背景色, 文字色)
             "canker": ("#52663f", "#ffffff"),
@@ -292,7 +376,7 @@ if uploaded_file is not None:
         )
         bg_color, text_color = disease_colors.get(best_class, ("#52663f", "#ffffff"))
         
-        # 用自訂色塊顯示建議內容（保留換行）
+        # 用自訂 HTML 色塊顯示建議內容，white-space: pre-line 可保留建議文字中的換行。
         st.markdown(
             f"""
             <div style="
@@ -310,13 +394,14 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("詳細分析")
 
-    # 建立 DataFrame，將英文類別名稱轉換為中文
+    # 將模型回傳的預測結果轉成表格資料，方便同時顯示排名、類別與信心度。
     predictions_zh = [(DISEASE_NAME_ZH.get(cls, cls), prob) for cls, prob in predictions]
     df = pd.DataFrame(predictions_zh, columns=['類別', '信心度 (%)'])
     df['排名'] = range(1, len(df) + 1)
     df = df[['排名', '類別', '信心度 (%)']]
 
     # --------- 表格：整體顏色風格 ---------
+    # pandas Styler 可替 dataframe 套用標題列與資料列樣式。
     styled_df = (
         df.style
         # 標題列樣式
@@ -324,10 +409,10 @@ if uploaded_file is not None:
             {
                 "selector": "th",
                 "props": [
-                    ("background-color", "#3b4f32"),  # 標題列底色
-                    ("color", "#ffffff"),             # 標題文字顏色
+                    ("background-color", "#ebf1e5"),  # 標題列底色
+                    ("color", "#000000"),             # 標題文字顏色
                     ("font-weight", "600"),
-                    ("text-align", "center"),
+                    ("text-align", "right"),
                 ],
             }
         ])
@@ -336,6 +421,7 @@ if uploaded_file is not None:
             "background-color": "#52663f",  # 每一列底色
             "color": "#ffffff",             # 每一列文字顏色
             "border-color": "#768f5f",
+            "text-align": "right",
         })
     )
 
@@ -345,9 +431,8 @@ if uploaded_file is not None:
         hide_index=True,
     )
 
-    # --------- 長條圖：整體顏色風格（改用 Altair） ---------
-    import altair as alt
-
+    # --------- 長條圖：整體顏色風格（Altair） ---------
+    # 用長條圖讓各類別信心度更容易比較。
     chart = (
         alt.Chart(df)
         .mark_bar(color="#3b4f32")
@@ -389,13 +474,14 @@ if uploaded_file is not None:
 
 else:
 
+    # 尚未上傳圖片時，顯示開始提示與使用說明。
     st.markdown(
         "<p style='text-align:center; color:#ffffff;background-color: #3b4f32; border-radius:10px; padding:0.6rem 1rem;     '> 請上傳圖片開始診斷</p>",
         unsafe_allow_html=True,
     )
 
 
-    # 使用說明
+    # 使用說明預設收合，讓使用者需要時再展開查看。
     
     with st.expander("使用說明"):
         st.markdown("""
@@ -429,6 +515,7 @@ else:
         """)
 
 # ========== 頁尾 ==========
+# 固定顯示系統名稱與模型資訊。
 st.markdown(f"""
 <div style='text-align: center; color: #000000; padding: 1rem;'>
     <p>植物病蟲害智慧辨識系統 v1.0</p>
