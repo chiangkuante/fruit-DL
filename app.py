@@ -25,6 +25,12 @@ def load_config(config_path="config.yaml"):
 config = load_config()
 model_display_name = config.get('model', {}).get('name', 'DINOv3 (ViT Large)')
 
+# ====== 網頁標題與設定 ======
+st.set_page_config(
+    page_title="植物病蟲害智慧辨識系統",
+    page_icon="🌿",
+    layout="wide"
+)
 
 
 # ====== 全站外觀設定 ======
