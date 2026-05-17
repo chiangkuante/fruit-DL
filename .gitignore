@@ -31,10 +31,16 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Data
-dataset/
-disease/
+# config
+config.yaml
 
+# Data
+dataset*/
+disease*/
+photo*/
+農業部病蟲害/
+dataset*
+disease*
 
 # Output
 output/
@@ -55,7 +61,3 @@ output_v2/
 
 # plan
 plan.md
-
-# AI
-CLAUDE.md
-.claude

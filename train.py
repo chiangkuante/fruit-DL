@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
 """
 植物病蟲害辨識模型訓練程式
-使用 ConvNeXt Large 進行遷移學習
+基於 DINOv3 (ViT Large) 進行遷移學習
 """
 
 import argparse
 import json
 import os
+import random
 from pathlib import Path
 
+import yaml
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 import timm
 from timm.data import resolve_data_config
 from tqdm import tqdm
+
+
+def load_config(config_path="config.yaml"):
+    """載入 YAML 設定檔"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
 
 
 def parse_args():
@@ -27,18 +37,18 @@ def parse_args():
                         help='資料集根目錄 (預設: dataset)')
 
     # 超參數
-    parser.add_argument('--batch-size', type=int, default=8,
-                        help='批次大小 (預設: 8，若 OOM 請改用 4)')
-    parser.add_argument('--epochs', type=int, default=30,
-                        help='訓練週期數 (預設: 30)')
-    parser.add_argument('--lr', type=float, default=1e-4,
-                        help='學習率 (預設: 1e-4)')
-    parser.add_argument('--weight-decay', type=float, default=0.01,
-                        help='權重衰減 (預設: 0.01)')
+    parser.add_argument('--batch-size', type=int, default=None,
+                        help='批次大小 (若未指定則讀取 config.yaml)')
+    parser.add_argument('--epochs', type=int, default=None,
+                        help='訓練週期數 (若未指定則讀取 config.yaml)')
+    parser.add_argument('--lr', type=float, default=None,
+                        help='學習率 (若未指定則讀取 config.yaml)')
+    parser.add_argument('--weight-decay', type=float, default=None,
+                        help='權重衰減 (若未指定則讀取 config.yaml)')
 
     # 模型設定
-    parser.add_argument('--model-name', type=str, default='convnext_large.fb_in1k',
-                        help='timm 模型名稱 (預設: convnext_large.fb_in1k)')
+    parser.add_argument('--model-name', type=str, default=None,
+                        help='timm 模型名稱 (若未指定則讀取 config.yaml)')
 
     # 輸出設定
     parser.add_argument('--output-dir', type=str, default='output',
@@ -94,14 +104,54 @@ def get_data_transforms(config):
     return train_transform, val_transform
 
 
-def create_dataloaders(data_dir, train_transform, val_transform, batch_size, num_workers):
-    """建立訓練和驗證資料載入器"""
+def create_dataloaders(data_dir, train_transform, val_transform, batch_size, num_workers, config=None):
+    """建立訓練和驗證資料載入器，並實作資料重採樣 (Resample) 功能"""
     train_dir = os.path.join(data_dir, 'train')
     val_dir = os.path.join(data_dir, 'val')
 
     # 建立 ImageFolder 資料集
     train_dataset = datasets.ImageFolder(train_dir, transform=train_transform)
     val_dataset = datasets.ImageFolder(val_dir, transform=val_transform)
+
+    # 實作 Resample 邏輯 (僅針對訓練集)
+    if config and config.get('dataset', {}).get('resample', {}).get('enabled', False):
+        resample_cfg = config['dataset']['resample']
+        method = resample_cfg.get('method', 'fixed_count')
+        target = resample_cfg.get('target', 1000)
+        per_class = resample_cfg.get('per_class', True)
+
+        indices = []
+        if per_class:
+            # 對每個類別獨立處理
+            class_to_indices = {i: [] for i in range(len(train_dataset.classes))}
+            for idx, (_, label) in enumerate(train_dataset.samples):
+                class_to_indices[label].append(idx)
+
+            for label, idxs in class_to_indices.items():
+                if method == 'fixed_count':
+                    num_samples = int(target)
+                else:  # ratio
+                    num_samples = int(len(idxs) * target)
+                
+                # 確保不超過現有樣本數 (除非要實作隨機重複採樣，這裡先採不重複採樣)
+                num_samples = min(num_samples, len(idxs))
+                if num_samples > 0:
+                    indices.extend(random.sample(idxs, num_samples))
+        else:
+            # 全域處理
+            total_samples = len(train_dataset)
+            if method == 'fixed_count':
+                num_samples = int(target)
+            else:  # ratio
+                num_samples = int(total_samples * target)
+            
+            num_samples = min(num_samples, total_samples)
+            if num_samples > 0:
+                indices = random.sample(range(total_samples), num_samples)
+
+        if indices:
+            train_dataset = Subset(train_dataset, indices)
+            print(f"ℹ 已啟動 Resample: 方法={method}, 目標={target}, 最終訓練集大小={len(train_dataset)}")
 
     # 建立 DataLoader
     train_loader = DataLoader(
@@ -120,7 +170,7 @@ def create_dataloaders(data_dir, train_transform, val_transform, batch_size, num
         pin_memory=True
     )
 
-    return train_loader, val_loader, train_dataset.classes
+    return train_loader, val_loader, getattr(train_dataset, 'classes', train_dataset.dataset.classes if isinstance(train_dataset, Subset) else train_dataset.classes)
 
 
 def create_model(model_name, num_classes):
@@ -246,6 +296,15 @@ def save_classes_json(classes, output_dir):
 
 def main():
     args = parse_args()
+    config = load_config()
+
+    # 優先權：命令列參數 > 設定檔 > 預設值
+    train_cfg = config.get('train', {})
+    model_name = args.model_name or config.get('model', {}).get('name', 'vit_large_patch16_dinov3.lvd1689m')
+    batch_size = args.batch_size or train_cfg.get('batch_size', 8)
+    epochs = args.epochs or train_cfg.get('epochs', 30)
+    lr = args.lr or train_cfg.get('lr', 1e-4)
+    weight_decay = args.weight_decay or train_cfg.get('weight_decay', 0.01)
 
     # 設定隨機種子
     set_seed(args.seed)
@@ -262,8 +321,8 @@ def main():
         print("警告: CUDA 不可用，使用 CPU 訓練會非常慢！")
 
     # 建立臨時模型以獲取資料配置
-    print("\n正在準備資料轉換...")
-    temp_model = timm.create_model(args.model_name, pretrained=False)
+    print(f"\n正在準備模型 [{model_name}] 的資料轉換...")
+    temp_model = timm.create_model(model_name, pretrained=False)
     data_config = resolve_data_config({}, model=temp_model)
     print(f"模型輸入尺寸: {data_config['input_size']}")
     print(f"標準化參數 - Mean: {data_config['mean']}, Std: {data_config['std']}")
@@ -278,8 +337,9 @@ def main():
         args.data_dir,
         train_transform,
         val_transform,
-        args.batch_size,
-        args.num_workers
+        batch_size,
+        args.num_workers,
+        config=config
     )
 
     print(f"訓練集大小: {len(train_loader.dataset)}")
@@ -292,27 +352,28 @@ def main():
 
     # 建立模型
     print("\n正在建立模型...")
-    model = create_model(args.model_name, len(classes))
+    model = create_model(model_name, len(classes))
     model = model.to(device)
 
     # 定義損失函數和優化器
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(
         model.parameters(),
-        lr=args.lr,
-        weight_decay=args.weight_decay
+        lr=lr,
+        weight_decay=weight_decay
     )
 
     # 建立混合精度訓練的 GradScaler
     scaler = torch.amp.GradScaler('cuda')
 
     # 訓練迴圈
-    print(f"\n開始訓練 (共 {args.epochs} 個 epochs)")
+    print(f"\n開始訓練 (共 {epochs} 個 epochs)")
+    print(f"參數設定: Batch Size={batch_size}, LR={lr}, Weight Decay={weight_decay}")
     print("=" * 80)
 
     best_acc = 0.0
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, epochs + 1):
         # 訓練
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, scaler, device, epoch
@@ -324,7 +385,7 @@ def main():
         )
 
         # 印出統計資訊
-        print(f"\nEpoch {epoch}/{args.epochs}")
+        print(f"\nEpoch {epoch}/{epochs}")
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}%")
         print(f"  Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc:.2f}%")
 
