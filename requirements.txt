@@ -1,0 +1,11 @@
+torch
+torchvision
+timm
+streamlit
+pandas
+pillow
+altair
+scikit-learn
+tqdm
+matplotlib
+

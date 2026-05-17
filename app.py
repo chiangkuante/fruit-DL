@@ -402,34 +402,77 @@ if uploaded_file is not None:
 
     # --------- 表格：整體顏色風格 ---------
     # pandas Styler 可替 dataframe 套用標題列與資料列樣式。
+    # styled_df = (
+    #     df.style
+    #     # 標題列樣式
+    #     .set_table_styles([
+    #         {
+    #             "selector": "th",
+    #             "props": [
+    #                 ("background-color", "#ebf1e5"),  # 標題列底色
+    #                 ("color", "#000000"),             # 標題文字顏色
+    #                 ("font-weight", "600"),
+    #                 ("text-align", "right"),
+    #             ],
+    #         }
+    #     ])
+    #     # 資料列樣式
+    #     .set_properties(**{
+    #         "background-color": "#52663f",  # 每一列底色
+    #         "color": "#ffffff",             # 每一列文字顏色
+    #         "border-color": "#768f5f",
+    #         "text-align": "right",
+    #     })
+    # )
+
+    # st.dataframe(
+    #     styled_df,
+    #     width='stretch',
+    #     hide_index=True,
+    # )
+
+    # --------- 表格：改用 HTML 渲染，徹底控制對齊與樣式 ---------
     styled_df = (
         df.style
-        # 標題列樣式
+        .hide(axis="index")  # 隱藏 index
+        .format({"信心度 (%)": "{:.2f}"})  # 信心度只顯示 2 位小數
         .set_table_styles([
             {
-                "selector": "th",
+                "selector": "",  # 整個表格
                 "props": [
-                    ("background-color", "#ebf1e5"),  # 標題列底色
-                    ("color", "#000000"),             # 標題文字顏色
-                    ("font-weight", "600"),
-                    ("text-align", "right"),
+                    ("width", "100%"),
+                    ("border-collapse", "separate"),
+                    ("border-spacing", "0"),
+                    ("border-radius", "6px"),
+                    ("overflow", "hidden"),
+                    ("font-size", "0.90rem"),
+                    ("margin-bottom", "1rem"),
                 ],
-            }
+            },
+            {
+                "selector": "thead th",  # 標題列
+                "props": [
+                    ("background-color", "#ebf1e5"),
+                    ("color", "#000000"),
+                    ("font-weight", "500"),
+                    ("text-align", "right"),
+                    ("padding", "0.6rem 1rem"),
+                ],
+            },
+            {
+                "selector": "tbody td",  # 資料儲存格
+                "props": [
+                    ("background-color", "#52663f"),
+                    ("color", "#ffffff"),
+                    ("text-align", "right"),   # ← 全部右對齊
+                    ("padding", "0.55rem 1rem"),
+                    ("border-top", "1px solid #768f5f"),
+                ],
+            },
         ])
-        # 資料列樣式
-        .set_properties(**{
-            "background-color": "#52663f",  # 每一列底色
-            "color": "#ffffff",             # 每一列文字顏色
-            "border-color": "#768f5f",
-            "text-align": "right",
-        })
     )
 
-    st.dataframe(
-        styled_df,
-        width='stretch',
-        hide_index=True,
-    )
+    st.markdown(styled_df.to_html(), unsafe_allow_html=True)
 
     # --------- 長條圖：整體顏色風格（Altair） ---------
     # 用長條圖讓各類別信心度更容易比較。
@@ -456,6 +499,7 @@ if uploaded_file is not None:
             height=260,
             width=600,              
             background="#52663f",
+            padding={"left": 20, "right": 25, "top": 10, "bottom": 8},
         )
         .configure_view(
             strokeWidth=0,
@@ -471,6 +515,103 @@ if uploaded_file is not None:
     )
 
     st.altair_chart(chart, width='stretch')
+
+    # ========== 病蟲害參考圖集 ==========
+    import os
+    import glob
+    import base64
+
+    faiss_dir = "/home/carbon/fruit-DL/faiss_photo"
+    jpg_files = sorted(glob.glob(os.path.join(faiss_dir, "*.[jJ][pP][gG]")))[:3]
+
+    gallery_cards = []
+
+    for img_path in jpg_files:
+        filename = os.path.basename(img_path)
+
+        with open(img_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("utf-8")
+
+        # HTML 寫成單行，避免 Markdown 把行首縮排解析成程式碼區塊。
+        gallery_cards.append(
+            f'<div class="reference-card">'
+            f'<img src="data:image/jpeg;base64,{encoded}" alt="{filename}">'
+            f'<div class="reference-caption">{filename}</div>'
+            f'</div>'
+        )
+
+    gallery_items = "".join(gallery_cards)
+
+    if gallery_items:
+        st.markdown(
+f"""<style>
+.reference-gallery {{
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #768f5f;
+    margin-top: 0.35rem;
+    margin-bottom: 1.4rem;
+    background-color: #52663f;
+}}
+.reference-gallery summary {{
+    background-color: #3b4f32 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #768f5f;
+}}
+.reference-gallery summary::-webkit-details-marker {{
+    display: none;
+}}
+.reference-gallery summary::before {{
+    content: "⌄";
+    margin-right: 0.55rem;
+    font-size: 0.9rem;
+}}
+.reference-gallery[open] summary::before {{
+    content: "⌃";
+}}
+.reference-gallery-body {{
+    background-color: #52663f;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}}
+@media (max-width: 600px) {{
+    .reference-gallery-body {{
+        grid-template-columns: 1fr;
+    }}
+}}
+.reference-card {{
+    background-color: #ebf1e5;
+    border-radius: 10px;
+    padding: 0.75rem;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}}
+.reference-card img {{
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 7px;
+    display: block;
+}}
+.reference-caption {{
+    color: #3b4f32;
+    font-weight: 700;
+    font-size: 0.92rem;
+    margin-top: 0.65rem;
+    word-break: break-word;
+}}
+</style>
+<details class="reference-gallery" open><summary>病蟲害參考圖集</summary><div class="reference-gallery-body">{gallery_items}</div></details>""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.info("找不到參考圖片。")
 
 else:
 
@@ -513,6 +654,8 @@ else:
         - **pest_scale_insect** (蟲害－介殼蟲 )
 
         """)
+
+
 
 # ========== 頁尾 ==========
 # 固定顯示系統名稱與模型資訊。
