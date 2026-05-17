@@ -7,14 +7,24 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import List, Tuple, Union, Optional
 
+import yaml
 import torch
 from PIL import Image
 from torchvision import transforms
 import timm
 from timm.data import resolve_data_config
+
+
+def load_config(config_path="config.yaml"):
+    """載入 YAML 設定檔"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
 
 
 class PlantDiseasePredictor:
@@ -24,6 +34,7 @@ class PlantDiseasePredictor:
         self,
         model_path: str = 'output/best_model.pth',
         classes_path: str = 'output/classes.json',
+        model_name: Optional[str] = None,
         device: Optional[str] = None,
         verbose: bool = True
     ):
@@ -33,12 +44,17 @@ class PlantDiseasePredictor:
         Args:
             model_path: 模型權重檔案路徑
             classes_path: 類別映射 JSON 檔案路徑
+            model_name: timm 模型名稱 (若為 None 則嘗試從 config.yaml 讀取)
             device: 指定裝置 ('cuda', 'cpu', 或 None 自動選擇)
             verbose: 是否顯示載入訊息
         """
         self.model_path = model_path
         self.classes_path = classes_path
         self.verbose = verbose
+        
+        # 載入設定
+        self.config = load_config()
+        self.model_name = model_name or self.config.get('model', {}).get('name', 'vit_large_patch16_dinov3.lvd1689m')
 
         # 載入類別映射
         with open(classes_path, 'r', encoding='utf-8') as f:
@@ -53,7 +69,7 @@ class PlantDiseasePredictor:
 
         # 建立模型
         self.model = timm.create_model(
-            'convnext_large.fb_in1k',
+            self.model_name,
             pretrained=False,
             num_classes=self.num_classes
         )
@@ -78,7 +94,7 @@ class PlantDiseasePredictor:
 
     def _create_transform(self):
         """建立圖片轉換"""
-        temp_model = timm.create_model('convnext_large.fb_in1k', pretrained=False)
+        temp_model = timm.create_model(self.model_name, pretrained=False)
         data_config = resolve_data_config({}, model=temp_model)
 
         input_size = data_config['input_size'][-1]
@@ -264,23 +280,27 @@ def main():
     print("=" * 80)
     print()
 
-    # 載入模型
-    model, classes_dict, device = load_model_and_classes(args.model, args.classes)
-    print()
-
-    # 建立轉換
-    transform = get_transform()
+    # 建立預測器
+    try:
+        predictor = PlantDiseasePredictor(
+            model_path=args.model,
+            classes_path=args.classes,
+            verbose=True
+        )
+    except Exception as e:
+        print(f"載入預測器失敗: {e}")
+        return
 
     # 獲取圖片路徑列表
     image_path = Path(args.image)
     if image_path.is_dir():
         # 如果是目錄，獲取所有圖片
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff'}
-        image_files = [
+        image_files = sorted([
             f for f in image_path.iterdir()
             if f.is_file() and f.suffix.lower() in image_extensions
-        ]
-        print(f"找到 {len(image_files)} 張圖片")
+        ])
+        print(f"\n找到 {len(image_files)} 張圖片")
         print()
     else:
         # 單張圖片
@@ -293,9 +313,7 @@ def main():
         print(f"{'='*80}")
 
         try:
-            predictions = predict_image(
-                img_file, model, classes_dict, transform, device, args.top_k
-            )
+            predictions = predictor.predict(img_file, top_k=args.top_k)
 
             # 顯示預測結果
             print(f"\n預測結果 (Top {len(predictions)}):")
@@ -308,10 +326,10 @@ def main():
 
             # 標註最可能的預測
             best_class, best_prob = predictions[0]
-            print(f"\n✓ 最可能的診斷: {best_class} (信心度: {best_prob:.2f}%)")
+            print(f"\n最可能的診斷: {best_class} (信心度: {best_prob:.2f}%)")
 
         except Exception as e:
-            print(f"❌ 處理圖片時發生錯誤: {e}")
+            print(f"處理圖片時發生錯誤: {e}")
 
         print()
 

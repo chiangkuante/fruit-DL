@@ -1,15 +1,29 @@
 #!/usr/bin/env python3
 """
 植物病蟲害辨識 Streamlit Web 應用
-基於 ConvNeXt Large 深度學習模型
+基於 DINOv3 (ViT Large) 深度學習模型
 """
 
 import streamlit as st
+import yaml
+import os
 from PIL import Image
 import pandas as pd
 from predict import PlantDiseasePredictor
 import altair as alt
 import html
+
+
+def load_config(config_path="config.yaml"):
+    """載入 YAML 設定檔"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
+
+# 載入設定
+config = load_config()
+model_display_name = config.get('model', {}).get('name', 'DINOv3 (ViT Large)')
 
 
 
@@ -183,6 +197,13 @@ st.markdown("""
 # 模型輸出的是英文類別名稱，畫面顯示時透過這個字典轉成中文。
 DISEASE_NAME_ZH = {
     "healthy": "健康",
+    "anthracnose": "炭疽病",
+    "algal_leaf_spot": "藻斑病",
+    "rust": "銹病",
+    "pest_whitefly": "番荔枝粉蝨",
+    "pest_kanzawa_spider_mite": "神澤式葉螨",
+    "pest_mealybug": "粉介殼蟲",
+    "pest_tea_mite": "茶葉螨",
     "canker": "潰瘍病",
     "greasy_spot": "油斑病",
     "melanose": "黑點病",
@@ -254,7 +275,7 @@ with st.sidebar:
 
     # 在側邊欄最下方放插圖，增加畫面識別度。
     st.markdown("---")
-    st.image("spy.PNG", use_container_width=True)
+    st.image("spy.PNG", width="stretch")
 
 
 
@@ -347,11 +368,18 @@ if uploaded_file is not None:
 
         disease_recommendations = {
             "healthy": "葉片健康，繼續保持良好的栽培管理。",
+            "anthracnose": "檢測到炭疽病，建議：\n- 剪除受害病葉與枯枝\n- 噴灑適當殺菌劑（如波爾多液）\n- 注意通風與排水",
+            "algal_leaf_spot": "檢測到藻斑病，建議：\n- 改善通風與光照條件\n- 減少樹冠過度潮濕\n- 視情況使用銅劑進行防治",
+            "rust": "檢測到銹病，建議：\n- 清除病殘體以減少感染源\n- 噴灑推薦的抗銹病殺菌劑\n- 避免氮肥過量導致嫩葉過多",
+            "pest_whitefly": "檢測到番荔枝粉蝨，建議：\n- 使用黃色黏蟲板監測與誘殺\n- 噴灑礦物油或核准的殺蟲劑\n- 移除雜草以減少寄生源",
+            "pest_kanzawa_spider_mite": "檢測到神澤式葉螨，建議：\n- 保持環境適當濕度，避免過於乾燥\n- 使用殺蟎劑交替防治以避免抗藥性\n- 保護天敵（如捕植蟎）",
+            "pest_mealybug": "檢測到粉介殼蟲，建議：\n- 修剪受害嚴重的枝條\n- 使用系統性殺蟲劑或夏油噴灑\n- 防治共生螞蟻以減少擴散",
+            "pest_tea_mite": "檢測到茶葉螨，建議：\n- 加強嫩葉期監測\n- 使用推薦的殺蟎劑\n- 移除附近可能的寄主植物",
             "canker": "檢測到潰瘍病，建議：\n- 移除受感染組織\n- 使用銅基殺菌劑\n- 改善通風條件",
             "greasy_spot": "檢測到油斑病，建議：\n- 噴灑適當殺菌劑\n- 避免過度灌溉與葉面長期潮濕\n- 清除嚴重受害落葉",
             "melanose": "檢測到黑點病，建議：\n- 使用保護性殺菌劑\n- 修剪過密枝條\n- 注意排水與通風",
             "sooty_mold": "檢測到煤煙病，建議：\n- 先控制蚜蟲、介殼蟲等分泌蜜露的害蟲\n- 視情況清洗葉面\n- 改善園區通風與採光",
-            "pest_aphid": "檢測到蚜蟲危害，建議：\n- 針對嫩梢與葉背進行防治\n- 可使用皂素、礦物油或選擇性殺蟲劑\n- 避免氮肥過量以減少嫩梢暴露",
+            "pest_aphid": "檢測到蚜蟲危害，建議：\n- 針對嫩梢與葉背進行防治\n- 可使用皂素、礦物油 or 選擇性殺蟲劑\n- 避免氮肥過量以減少嫩梢暴露",
             "pest_leaf_miner": "檢測到潛葉蛾危害，建議：\n- 剪除嚴重受害葉片\n- 適時使用系統性殺蟲劑\n- 監測成蟲發生期以提早防治",
             "pest_scale_insect": "檢測到介殼蟲危害，建議：\n- 修剪嚴重受害枝條\n- 使用礦物油或合適殺蟲劑\n- 搭配天敵保育降低族群密度",
             "pest_thrips": "檢測到薊馬危害，建議：\n- 加強花期與嫩葉期監測\n- 適時使用選擇性殺蟲劑\n- 搭配黃色/藍色黏蟲板監控族群變化",
@@ -359,7 +387,14 @@ if uploaded_file is not None:
 
         # 預留不同類別使用不同顏色的彈性；目前先統一成綠色系。
         disease_colors = {
-            "healthy": ("#52663f", "#ffffff"),   # (背景色, 文字色)
+            "healthy": ("#52663f", "#ffffff"),
+            "anthracnose": ("#52663f", "#ffffff"),
+            "algal_leaf_spot": ("#52663f", "#ffffff"),
+            "rust": ("#52663f", "#ffffff"),
+            "pest_whitefly": ("#52663f", "#ffffff"),
+            "pest_kanzawa_spider_mite": ("#52663f", "#ffffff"),
+            "pest_mealybug": ("#52663f", "#ffffff"),
+            "pest_tea_mite": ("#52663f", "#ffffff"),
             "canker": ("#52663f", "#ffffff"),
             "greasy_spot": ("#52663f", "#ffffff"),
             "melanose": ("#52663f", "#ffffff"),
@@ -501,16 +536,23 @@ else:
 
         ### 支援的病害類別
 
-        本系統可辨識以下 9 種類別：
+        本系統可辨識以下 16 種類別：
         - **healthy** (健康)
+        - **anthracnose** (炭疽病)
+        - **algal_leaf_spot** (藻斑病)
+        - **rust** (銹病)
+        - **pest_whitefly** (番荔枝粉蝨)
+        - **pest_kanzawa_spider_mite** (神澤式葉螨)
+        - **pest_mealybug** (粉介殼蟲)
+        - **pest_tea_mite** (茶葉螨)
         - **canker** (潰瘍病)
         - **greasy_spot** (油斑病)
         - **melanose** (黑點病)
         - **sooty_mold** (煤煙病)
         - **pest_thrips** (蟲害－薊馬)
         - **pest_leaf_miner** (蟲害－潛葉蛾)
-        - **pest_aphid** (蟲害－蚜蟲 )
-        - **pest_scale_insect** (蟲害－介殼蟲 )
+        - **pest_aphid** (蟲害－蚜蟲)
+        - **pest_scale_insect** (蟲害－介殼蟲)
 
         """)
 
@@ -519,7 +561,7 @@ else:
 st.markdown(f"""
 <div style='text-align: center; color: #000000; padding: 1rem;'>
     <p>植物病蟲害智慧辨識系統 v1.0</p>
-    <p>使用 ConvNeXt Large 深度學習模型</p>
+    <p>使用 {model_display_name} 深度學習模型</p>
     <p>NPUST DN-LAB 2025</p>
 </div>
 """, unsafe_allow_html=True)

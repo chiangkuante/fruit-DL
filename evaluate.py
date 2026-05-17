@@ -19,6 +19,7 @@ import argparse
 import os
 from pathlib import Path
 
+import yaml
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -35,6 +36,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def load_config(config_path="config.yaml"):
+    """載入 YAML 設定檔"""
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    return {}
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='評估模型在驗證集上的表現')
 
@@ -42,8 +51,8 @@ def parse_args():
                         help='資料集根目錄 (內含 train/ 和 val/，預設: dataset)')
     parser.add_argument('--model-path', type=str, required=True,
                         help='訓練好的模型權重 (例如: output_v2/best_model.pth)')
-    parser.add_argument('--model-name', type=str, default='convnext_large.fb_in1k',
-                        help='timm 模型名稱 (預設: convnext_large.fb_in1k)')
+    parser.add_argument('--model-name', type=str, default=None,
+                        help='timm 模型名稱 (若未指定則讀取 config.yaml)')
     parser.add_argument('--batch-size', type=int, default=32,
                         help='評估時的 batch size (預設: 32)')
     parser.add_argument('--num-workers', type=int, default=4,
@@ -172,10 +181,13 @@ def plot_confusion_matrix(cm, class_names, output_path, cmap="Greens"):
 
 def main():
     args = parse_args()
+    config = load_config()
+
+    # 優先權：命令列參數 > 設定檔 > 預設值
+    model_name = args.model_name or config.get('model', {}).get('name', 'vit_large_patch16_dinov3.lvd1689m')
 
     data_dir = args.data_dir
     model_path = args.model_path
-    model_name = args.model_name
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
