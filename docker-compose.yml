@@ -11,6 +11,8 @@ services:
       # 掛載模型和資料集（避免每次重建映像）
       - ./output:/app/output
       - ./dataset:/app/dataset
+      # 掛載設定檔，方便即時調整參數
+      - ./config.yaml:/app/config.yaml
       # 如果需要保留上傳的圖片
       - ./uploads:/app/uploads
     environment:

@@ -201,9 +201,9 @@ DISEASE_NAME_ZH = {
     "algal_leaf_spot": "藻斑病",
     "rust": "銹病",
     "pest_whitefly": "番荔枝粉蝨",
-    "pest_kanzawa_spider_mite": "神澤式葉螨",
+    "pest_kanzawa_spider_mite": "神澤氏葉蟎",
     "pest_mealybug": "粉介殼蟲",
-    "pest_tea_mite": "茶葉螨",
+    "pest_tea_mite": "茶葉蟎",
 }
 
 # ========== 載入模型 (快取) ==========
@@ -320,6 +320,7 @@ if uploaded_file is not None:
         # 第一筆是信心度最高的預測，作為主要診斷結果。
         best_class, best_prob = predictions[0]
         best_class_zh = DISEASE_NAME_ZH.get(best_class, best_class)
+        display_name = f"{best_class_zh} ({best_class})"
 
         # 若最高信心度低於使用者設定的閾值，標題會提醒結果較不確定。
         if best_prob >= confidence_threshold:
@@ -340,7 +341,7 @@ if uploaded_file is not None:
             font-size:1.05rem;
             margin-bottom:0.8rem;
         ">
-            {result_title}：{best_class_zh}
+            {result_title}：{display_name}
         </div>
         """,
         unsafe_allow_html=True,
@@ -364,9 +365,9 @@ if uploaded_file is not None:
             "algal_leaf_spot": "檢測到藻斑病，建議：\n- 改善通風與光照條件\n- 減少樹冠過度潮濕\n- 視情況使用銅劑進行防治",
             "rust": "檢測到銹病，建議：\n- 清除病殘體以減少感染源\n- 噴灑推薦的抗銹病殺菌劑\n- 避免氮肥過量導致嫩葉過多",
             "pest_whitefly": "檢測到番荔枝粉蝨，建議：\n- 使用黃色黏蟲板監測與誘殺\n- 噴灑礦物油或核准的殺蟲劑\n- 移除雜草以減少寄生源",
-            "pest_kanzawa_spider_mite": "檢測到神澤式葉螨，建議：\n- 保持環境適當濕度，避免過於乾燥\n- 使用殺蟎劑交替防治以避免抗藥性\n- 保護天敵（如捕植蟎）",
+            "pest_kanzawa_spider_mite": "檢測到神澤氏葉蟎，建議：\n- 保持環境適當濕度，避免過於乾燥\n- 使用殺蟎劑交替防治以避免抗藥性\n- 保護天敵（如捕植蟎）",
             "pest_mealybug": "檢測到粉介殼蟲，建議：\n- 修剪受害嚴重的枝條\n- 使用系統性殺蟲劑或夏油噴灑\n- 防治共生螞蟻以減少擴散",
-            "pest_tea_mite": "檢測到茶葉螨，建議：\n- 加強嫩葉期監測\n- 使用推薦的殺蟎劑\n- 移除附近可能的寄主植物",
+            "pest_tea_mite": "檢測到茶葉蟎，建議：\n- 加強嫩葉期監測\n- 使用推薦的殺蟎劑\n- 移除附近可能的寄主植物",
             "canker": "檢測到潰瘍病，建議：\n- 移除受感染組織\n- 使用銅基殺菌劑\n- 改善通風條件",
             "greasy_spot": "檢測到油斑病，建議：\n- 噴灑適當殺菌劑\n- 避免過度灌溉與葉面長期潮濕\n- 清除嚴重受害落葉",
             "melanose": "檢測到黑點病，建議：\n- 使用保護性殺菌劑\n- 修剪過密枝條\n- 注意排水與通風",
@@ -427,36 +428,48 @@ if uploaded_file is not None:
     df['排名'] = range(1, len(df) + 1)
     df = df[['排名', '類別', '信心度 (%)']]
 
-    # --------- 表格：整體顏色風格 ---------
-    # pandas Styler 可替 dataframe 套用標題列與資料列樣式。
+    # --------- 表格：改用 HTML 渲染，徹底控制對齊與樣式 ---------
     styled_df = (
         df.style
-        # 標題列樣式
+        .hide(axis="index")  # 隱藏 index
+        .format({"信心度 (%)": "{:.2f}"})  # 信心度只顯示 2 位小數
         .set_table_styles([
             {
-                "selector": "th",
+                "selector": "",  # 整個表格
                 "props": [
-                    ("background-color", "#ebf1e5"),  # 標題列底色
-                    ("color", "#000000"),             # 標題文字顏色
-                    ("font-weight", "600"),
-                    ("text-align", "right"),
+                    ("width", "100%"),
+                    ("border-collapse", "separate"),
+                    ("border-spacing", "0"),
+                    ("border-radius", "6px"),
+                    ("overflow", "hidden"),
+                    ("font-size", "0.90rem"),
+                    ("margin-bottom", "1rem"),
                 ],
-            }
+            },
+            {
+                "selector": "thead th",  # 標題列
+                "props": [
+                    ("background-color", "#ebf1e5"),
+                    ("color", "#000000"),
+                    ("font-weight", "500"),
+                    ("text-align", "right"),
+                    ("padding", "0.6rem 1rem"),
+                ],
+            },
+            {
+                "selector": "tbody td",  # 資料儲存格
+                "props": [
+                    ("background-color", "#52663f"),
+                    ("color", "#ffffff"),
+                    ("text-align", "right"),   # ← 全部右對齊
+                    ("padding", "0.55rem 1rem"),
+                    ("border-top", "1px solid #768f5f"),
+                ],
+            },
         ])
-        # 資料列樣式
-        .set_properties(**{
-            "background-color": "#52663f",  # 每一列底色
-            "color": "#ffffff",             # 每一列文字顏色
-            "border-color": "#768f5f",
-            "text-align": "right",
-        })
     )
 
-    st.dataframe(
-        styled_df,
-        width='stretch',
-        hide_index=True,
-    )
+    st.markdown(styled_df.to_html(), unsafe_allow_html=True)
 
     # --------- 長條圖：整體顏色風格（Altair） ---------
     # 用長條圖讓各類別信心度更容易比較。
@@ -534,9 +547,9 @@ else:
         - **algal_leaf_spot** (藻斑病)
         - **rust** (銹病)
         - **pest_whitefly** (番荔枝粉蝨)
-        - **pest_kanzawa_spider_mite** (神澤式葉螨)
+        - **pest_kanzawa_spider_mite** (神澤氏葉蟎)
         - **pest_mealybug** (粉介殼蟲)
-        - **pest_tea_mite** (茶葉螨)
+        - **pest_tea_mite** (茶葉蟎)
 
         """)
 

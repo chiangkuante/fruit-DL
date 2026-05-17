@@ -11,9 +11,9 @@
 | `healthy` | 健康 | - |
 | `algal_leaf_spot` | 藻斑病 | 病害 |
 | `anthracnose` | 炭疽病 | 病害 |
-| `pest_kanzawa_spider_mite` | 神澤式葉螨 | 蟲害 |
+| `pest_kanzawa_spider_mite` | 神澤氏葉蟎 | 蟲害 |
 | `pest_mealybug` | 粉介殼蟲 | 蟲害 |
-| `pest_tea_mite` | 茶葉螨 | 蟲害 |
+| `pest_tea_mite` | 茶葉蟎 | 蟲害 |
 | `pest_whitefly` | 番荔枝粉蝨 | 蟲害 |
 | `rust` | 銹病 | 病害 |
 

@@ -28,7 +28,7 @@ ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 
 # 複製專案定義檔案（利用 Docker 快取）
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 
 # 使用 uv 安裝依賴（不安裝專案本身）
 RUN uv sync --no-dev --no-install-project
