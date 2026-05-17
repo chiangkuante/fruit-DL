@@ -42,6 +42,14 @@ st.markdown("""
             background-color: #768f5f;
         }
 
+        /* 主內容區：固定最大寬度 700px，視窗縮小時等比縮小 */
+        [data-testid="stMain"] .block-container {
+            max-width: 850px;
+            margin: 0 auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
         /* 把原本的 Streamlit header 壓扁、變透明 */
         [data-testid="stHeader"] {
             background: transparent;
@@ -103,6 +111,7 @@ st.markdown("""
         [data-testid="stSidebar"] [data-baseweb="slider"] > div > div > div {
             background-color: #3b4f32 !important;
         }
+    
 
         /* 滑桿圓形手把的顏色 */
         [data-testid="stSidebar"] [data-baseweb="slider"] [role="slider"] {
@@ -309,6 +318,7 @@ if uploaded_file is not None:
     with col1:
         st.subheader("上傳的圖片")
         st.image(image, caption=uploaded_file.name)
+
 
         # 圖片資訊放在 expander，避免主要畫面被細節佔滿。
         file_name = html.escape(uploaded_file.name)
@@ -564,6 +574,7 @@ if uploaded_file is not None:
     st.altair_chart(chart, width='stretch')
 
 
+else:
     # 尚未上傳圖片時，顯示開始提示與使用說明。
     st.markdown(
         "<p style='text-align:center; color:#ffffff;background-color: #3b4f32; border-radius:10px; padding:0.6rem 1rem;     '> 請上傳圖片開始診斷</p>",
