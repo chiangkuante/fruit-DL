@@ -204,14 +204,6 @@ DISEASE_NAME_ZH = {
     "pest_kanzawa_spider_mite": "神澤式葉螨",
     "pest_mealybug": "粉介殼蟲",
     "pest_tea_mite": "茶葉螨",
-    "canker": "潰瘍病",
-    "greasy_spot": "油斑病",
-    "melanose": "黑點病",
-    "sooty_mold": "煤煙病",
-    "pest_aphid": "蟲害－蚜蟲",
-    "pest_leaf_miner": "蟲害－潛葉蛾",
-    "pest_scale_insect": "蟲害－介殼蟲",
-    "pest_thrips": "蟲害－薊馬",
 }
 
 # ========== 載入模型 (快取) ==========
@@ -536,7 +528,7 @@ else:
 
         ### 支援的病害類別
 
-        本系統可辨識以下 16 種類別：
+        本系統目前可辨識以下 8 種類別：
         - **healthy** (健康)
         - **anthracnose** (炭疽病)
         - **algal_leaf_spot** (藻斑病)
@@ -545,14 +537,6 @@ else:
         - **pest_kanzawa_spider_mite** (神澤式葉螨)
         - **pest_mealybug** (粉介殼蟲)
         - **pest_tea_mite** (茶葉螨)
-        - **canker** (潰瘍病)
-        - **greasy_spot** (油斑病)
-        - **melanose** (黑點病)
-        - **sooty_mold** (煤煙病)
-        - **pest_thrips** (蟲害－薊馬)
-        - **pest_leaf_miner** (蟲害－潛葉蛾)
-        - **pest_aphid** (蟲害－蚜蟲)
-        - **pest_scale_insect** (蟲害－介殼蟲)
 
         """)
 
@@ -560,8 +544,8 @@ else:
 # 固定顯示系統名稱與模型資訊。
 st.markdown(f"""
 <div style='text-align: center; color: #000000; padding: 1rem;'>
-    <p>植物病蟲害智慧辨識系統 v1.0</p>
+    <p>植物病蟲害智慧辨識系統 v1.1</p>
     <p>使用 {model_display_name} 深度學習模型</p>
-    <p>NPUST DN-LAB 2025</p>
+    <p>NPUST DN-LAB 2026</p>
 </div>
 """, unsafe_allow_html=True)

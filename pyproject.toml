@@ -1,6 +1,6 @@
 [project]
 name = "fruit-dl"
-version = "1.0.0"
+version = "1.1.0"
 description = "植物病蟲害智慧辨識系統 - 基於 DINOv3 (ViT Large) 深度學習模型"
 readme = "README.md"
 requires-python = ">=3.10"
