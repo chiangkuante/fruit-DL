@@ -110,9 +110,22 @@ st.markdown("""
             border-color: #768f5f !important;
         }
 
+        /* 圓點手把：常態的外圈陰影（無 hover 也存在） */
+        [data-testid="stSidebar"] [data-baseweb="slider"] [role="slider"] {
+            box-shadow: 0 0 0 3px #3b4f32 !important;
+        }
+
         /* Slider 上方/下方顯示的數字與文字顏色 */
         [data-testid="stSidebar"] [data-baseweb="slider"] * {
             color: #FFFFFF !important;
+        }
+            
+        /* 涵蓋各種版本的 tick 標記 /
+        [data-testid="stSidebar"] [data-baseweb="slider"] [data-testid="TickBar"],
+        [data-testid="stSidebar"] [data-baseweb="slider"] [class="tick"],
+        [data-testid="stSidebar"] [data-baseweb="slider"] [class="Tick"] {
+            color: #3b4f32 !important;
+            background-color: #3b4f32 !important;
         }
 
         
@@ -434,6 +447,37 @@ if uploaded_file is not None:
     df['排名'] = range(1, len(df) + 1)
     df = df[['排名', '類別', '信心度 (%)']]
 
+    # --------- 表格：整體顏色風格 ---------
+    # pandas Styler 可替 dataframe 套用標題列與資料列樣式。
+    # styled_df = (
+    #     df.style
+    #     # 標題列樣式
+    #     .set_table_styles([
+    #         {
+    #             "selector": "th",
+    #             "props": [
+    #                 ("background-color", "#ebf1e5"),  # 標題列底色
+    #                 ("color", "#000000"),             # 標題文字顏色
+    #                 ("font-weight", "600"),
+    #                 ("text-align", "right"),
+    #             ],
+    #         }
+    #     ])
+    #     # 資料列樣式
+    #     .set_properties(**{
+    #         "background-color": "#52663f",  # 每一列底色
+    #         "color": "#ffffff",             # 每一列文字顏色
+    #         "border-color": "#768f5f",
+    #         "text-align": "right",
+    #     })
+    # )
+
+    # st.dataframe(
+    #     styled_df,
+    #     width='stretch',
+    #     hide_index=True,
+    # )
+
     # --------- 表格：改用 HTML 渲染，徹底控制對齊與樣式 ---------
     styled_df = (
         df.style
@@ -502,6 +546,7 @@ if uploaded_file is not None:
             height=260,
             width=600,              
             background="#52663f",
+            padding={"left": 20, "right": 25, "top": 10, "bottom": 8},
         )
         .configure_view(
             strokeWidth=0,
@@ -518,7 +563,6 @@ if uploaded_file is not None:
 
     st.altair_chart(chart, width='stretch')
 
-else:
 
     # 尚未上傳圖片時，顯示開始提示與使用說明。
     st.markdown(
@@ -558,6 +602,8 @@ else:
         - **pest_tea_mite** (茶葉蟎)
 
         """)
+
+
 
 # ========== 頁尾 ==========
 # 固定顯示系統名稱與模型資訊。
