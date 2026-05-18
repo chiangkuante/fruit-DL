@@ -47,9 +47,6 @@ output/
 logs/
 checkpoints/
 
-# Streamlit
-.streamlit/
-
 # Temporary
 *.tmp
 *.log
