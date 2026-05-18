@@ -8,17 +8,11 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      # 掛載模型和資料集
+      # 掛載模型和資料集（避免每次重建映像）
       - ./output:/app/output
       - ./dataset:/app/dataset
-      # 掛載設定檔
+      # 掛載設定檔，方便即時調整參數
       - ./config.yaml:/app/config.yaml
-      # 掛載程式碼（實現秒級更新，無需重新 build）
-      - ./app.py:/app/app.py
-      - ./train.py:/app/train.py
-      - ./predict.py:/app/predict.py
-      - ./evaluate.py:/app/evaluate.py
-      - ./split_dataset.py:/app/split_dataset.py
       # 如果需要保留上傳的圖片
       - ./uploads:/app/uploads
     environment:
